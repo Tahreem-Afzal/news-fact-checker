@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Fact-Checker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Playfair+Display:wght@700&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Inter', -apple-system, sans-serif;
+    background: #080808;
+    color: #e0e0e0;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 2rem 1rem;
+  }
+
+  .container {
+    width: 100%;
+    max-width: 740px;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+
+  /* Masthead */
+  .masthead {
+    background: #0d0d0d;
+    border: 1px solid #222;
+    border-bottom: 3px solid #fff;
+    border-radius: 8px 8px 0 0;
+    padding: 18px 24px 14px;
+  }
+  .masthead-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 6px;
+  }
+  .masthead-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 30px;
+    font-weight: 700;
+    color: #fff;
+    letter-spacing: -0.5px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .masthead-title::before {
+    content: '';
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    background: #fff;
+    border-radius: 2px;
+  }
+  .masthead-date {
+    font-size: 11px;
+    color: #555;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+  }
+  .masthead-tagline {
+    font-size: 11px;
+    color: #555;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    border-top: 1px solid #222;
+    padding-top: 8px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .masthead-tagline span { color: #333; }
+
+  /* Chat window */
+  .chat-window {
+    background: #111;
+    border: 1px solid #222;
+    border-top: none;
+    border-radius: 0 0 8px 8px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .messages {
+    flex: 1;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    overflow-y: auto;
+    max-height: 520px;
+  }
+
+  /* Messages */
+  .msg { display: flex; gap: 10px; align-items: flex-start; }
+  .msg.user { flex-direction: row-reverse; }
+
+  .avatar {
+    width: 30px; height: 30px;
+    border-radius: 4px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10px; font-weight: 600;
+    flex-shrink: 0;
+  }
+  .avatar.ai { background: #fff; color: #000; }
+  .avatar.you { background: #222; color: #888; border: 1px solid #333; }
+
+  .bubble {
+    max-width: 86%;
+    padding: 11px 15px;
+    border-radius: 4px;
+    font-size: 14px;
+    line-height: 1.7;
+  }
+  .msg.bot .bubble {
+    background: #1a1a1a;
+    border: 1px solid #2a2a2a;
+    color: #ccc;
+    border-top-left-radius: 0;
+  }
+  .msg.user .bubble {
+    background: #fff;
+    color: #000;
+    border-top-right-radius: 0;
+  }
+
+  /* Result card */
+  .result-card {
+    border: 1px solid #2a2a2a;
+    border-radius: 4px;
+    overflow: hidden;
+    margin-top: 10px;
+    background: #141414;
+  }
+  .result-header {
+    padding: 14px 16px;
+    border-bottom: 1px solid #2a2a2a;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .verdict-badge {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 5px 14px;
+    border-radius: 2px;
+    font-size: 11px; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 0.1em;
+  }
+  .verdict-badge.credible  { background: #0f3d2a; color: #4ade80; border: 1px solid #1a5e3a; }
+  .verdict-badge.misleading { background: #3d0f0f; color: #f87171; border: 1px solid #5e1a1a; }
+  .verdict-badge.uncertain  { background: #3d2e0f; color: #fbbf24; border: 1px solid #5e450f; }
+
+  .score-block { text-align: right; }
+  .score-num {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 26px; font-weight: 400; color: #fff;
+  }
+  .score-lbl { font-size: 10px; color: #555; text-transform: uppercase; letter-spacing: 0.08em; }
+
+  .bar-track { height: 3px; background: #1a1a1a; }
+  .bar-fill   { height: 3px; transition: width 1.2s ease; }
+
+  .result-body { padding: 16px; display: flex; flex-direction: column; gap: 14px; }
+
+  .section-label {
+    font-size: 10px; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 0.12em;
+    color: #444; margin-bottom: 6px;
+  }
+  .section-text { font-size: 13px; line-height: 1.7; color: #bbb; }
+
+  .divider { border: none; border-top: 1px solid #1e1e1e; margin: 0; }
+
+  .tag-list { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 5px; }
+  .tag {
+    font-size: 11px; padding: 3px 10px;
+    background: #2a1e00; color: #fbbf24;
+    border: 1px solid #3d2e00;
+    border-radius: 2px;
+  }
+
+  .signal-list { list-style: none; margin-top: 5px; display: flex; flex-direction: column; gap: 6px; }
+  .signal-list li {
+    font-size: 13px; color: #bbb;
+    display: flex; gap: 9px; align-items: flex-start;
+  }
+  .dot { width: 4px; height: 4px; border-radius: 50%; flex-shrink: 0; margin-top: 8px; }
+  .dot-danger  { background: #f87171; }
+  .dot-success { background: #4ade80; }
+  .dot-neutral { background: #555; }
+
+  .followup-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+  .chip {
+    font-size: 12px; padding: 5px 13px;
+    border: 1px solid #252525; background: #161616;
+    color: #666; cursor: pointer;
+    border-radius: 2px; transition: all 0.15s;
+  }
+  .chip:hover { border-color: #fff; color: #fff; }
+
+  /* Input area */
+  .input-area {
+    border-top: 2px solid #fff;
+    padding: 14px 18px;
+    display: flex; flex-direction: column; gap: 10px;
+    background: #0d0d0d;
+  }
+  .samples-row { display: flex; gap: 7px; align-items: center; flex-wrap: wrap; }
+  .sample-label { font-size: 10px; color: #444; text-transform: uppercase; letter-spacing: 0.1em; }
+  .sample-btn {
+    font-size: 11px; padding: 4px 12px;
+    border: 1px solid #2a2a2a; background: transparent;
+    color: #666; cursor: pointer; border-radius: 2px; transition: all 0.15s;
+  }
+  .sample-btn:hover { border-color: #888; color: #fff; }
+
+  .input-row { display: flex; gap: 8px; align-items: flex-end; }
+  textarea {
+    flex: 1; resize: none; height: 62px;
+    padding: 11px 14px;
+    border: 1px solid #2a2a2a; border-radius: 4px;
+    font-size: 13px; font-family: 'Inter', sans-serif;
+    color: #e0e0e0; background: #1a1a1a;
+    line-height: 1.5; transition: border-color 0.2s;
+  }
+  textarea:focus { outline: none; border-color: #fff; }
+  textarea::placeholder { color: #3a3a3a; }
+
+  .send-btn {
+    height: 62px; padding: 0 20px;
+    background: #fff; color: #000; border: none;
+    border-radius: 4px; font-size: 13px; font-weight: 500;
+    cursor: pointer; display: flex; align-items: center; gap: 7px;
+    transition: background 0.15s; white-space: nowrap;
+  }
+  .send-btn:hover { background: #ddd; }
+  .send-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+
+  .hint { font-size: 11px; color: #333; }
+
+  /* Footer */
+  .footer {
+    text-align: center; margin-top: 1rem;
+    font-size: 11px; color: #333;
+    text-transform: uppercase; letter-spacing: 0.08em;
+  }
+
+  /* Typing */
+  .typing { display: flex; gap: 4px; align-items: center; padding: 2px 0; }
+  .typing span {
+    width: 5px; height: 5px; border-radius: 50%;
+    background: #444; animation: bounce 1.3s infinite ease-in-out;
+  }
+  .typing span:nth-child(2) { animation-delay: 0.2s; }
+  .typing span:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes bounce { 0%,80%,100%{opacity:0.2} 40%{opacity:1} }
+
+  /* Scrollbar */
+  .messages::-webkit-scrollbar { width: 4px; }
+  .messages::-webkit-scrollbar-track { background: #111; }
+  .messages::-webkit-scrollbar-thumb { background: #2a2a2a; border-radius: 2px; }
+</style>
+</head>
+<body>
+
+<div class="container">
+
+  <div class="masthead">
+    <div class="masthead-top">
+      <div class="masthead-title">The Fact-Checker</div>
+      <div class="masthead-date" id="masthead-date"></div>
+    </div>
+    <div class="masthead-tagline">
+      AI-powered news credibility analysis
+      <span>·</span> Summarize
+      <span>·</span> Verify
+      <span>·</span> Detect misinformation
+    </div>
+  </div>
+
+  <div class="chat-window">
+    <div class="messages" id="messages">
+      <div class="msg bot">
+        <div class="avatar ai">AI</div>
+        <div class="bubble">
+          Hi! Paste any news article and I'll summarize it, check its credibility, and flag any suspicious patterns.<br><br>
+          After the analysis, you can ask me follow-up questions about the article.
+        </div>
+      </div>
+    </div>
+
+    <div class="input-area">
+      <div class="samples-row">
+        <span class="sample-label">Try a sample:</span>
+        <button class="sample-btn" onclick="useSample('real')">Real news</button>
+        <button class="sample-btn" onclick="useSample('fake')">Fake news</button>
+        <button class="sample-btn" onclick="useSample('mixed')">Mixed signals</button>
+      </div>
+      <div class="input-row">
+        <textarea id="input" placeholder="Paste a news article here (min 25 words)... or ask a follow-up question"></textarea>
+        <button class="send-btn" id="send-btn" onclick="handleSend()">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="black"><path d="M2 21l21-9L2 3v7l15 2-15 2z"/></svg>
+          Send
+        </button>
+      </div>
+      <div class="hint">Ctrl + Enter to send</div>
+    </div>
+  </div>
+
+  <div class="footer">Powered by Groq AI &nbsp;·&nbsp; Results are AI-generated and should be independently verified</div>
+
+</div>
+
+<script>
+const d = new Date();
+document.getElementById('masthead-date').textContent =
+  d.toLocaleDateString('en-US', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
+
+const SAMPLES = {
+  real: `Scientists at NASA confirmed Thursday that the Perseverance rover has collected its most promising rock samples yet from Mars, potentially containing signs of ancient microbial life. The samples, gathered from a dried river delta in Jezero Crater, will be returned to Earth as part of a joint mission with ESA scheduled for the early 2030s. Lead researcher Dr. Ken Farley said laboratory analysis will be required to draw any conclusions, emphasizing that the team is cautiously optimistic. The findings were published in the peer-reviewed journal Science.`,
+  fake: `SHOCKING EXCLUSIVE you won't believe! Scientists are HIDING the truth that 5G towers are causing mass illness and the government knows! Urgent whistleblower insider reveals the mainstream media SCAM they don't want you to see. Share this before it gets deleted! Unbelievable banned footage proves the conspiracy is REAL. Click here now — this changes everything. The deep state cover-up continues as millions suffer in silence!`,
+  mixed: `A new study suggests that drinking coffee every day may significantly reduce the risk of developing Alzheimer's disease. Researchers tracked 3,000 participants over a decade and found promising correlations. However, scientists caution that the study is observational and cannot prove causation. Some experts remain skeptical, noting that previous research has produced conflicting results. The findings are described as preliminary and more clinical trials are needed before any dietary recommendations can be made.`
+};
+
+let lastArticle = '';
+let lastResult  = null;
+
+function useSample(type) {
+  document.getElementById('input').value = SAMPLES[type];
+  document.getElementById('input').focus();
+}
+
+function scrollBottom() {
+  const m = document.getElementById('messages');
+  requestAnimationFrame(() => { m.scrollTop = m.scrollHeight; });
+}
+
+function addMsg(role, html) {
+  const msgs = document.getElementById('messages');
+  const d = document.createElement('div');
+  d.className = `msg ${role}`;
+  d.innerHTML = `
+    <div class="avatar ${role === 'bot' ? 'ai' : 'you'}">${role === 'bot' ? 'AI' : 'You'}</div>
+    <div class="bubble">${html}</div>`;
+  msgs.appendChild(d);
+  scrollBottom();
+  return d;
+}
+
+function addTyping() {
+  const msgs = document.getElementById('messages');
+  const d = document.createElement('div');
+  d.id = 'typing-indicator';
+  d.className = 'msg bot';
+  d.innerHTML = `<div class="avatar ai">AI</div><div class="bubble"><div class="typing"><span></span><span></span><span></span></div></div>`;
+  msgs.appendChild(d);
+  scrollBottom();
+}
+function removeTyping() {
+  const t = document.getElementById('typing-indicator');
+  if (t) t.remove();
+}
+
+function buildResultHTML(r) {
+  const isReal = r.verdict === 'credible';
+  const isFake = r.verdict === 'misleading';
+  const barColor = isReal ? '#4ade80' : isFake ? '#f87171' : '#fbbf24';
+  const score = r.credibility_score;
+  const verdictLabel = isReal ? '&#10003; Credible' : isFake ? '&#10005; Misleading' : '? Uncertain';
+  const scoreNote = isReal ? 'credibility' : 'concern level';
+  const uid = 'bar' + Date.now();
+
+  let kwHtml = '';
+  if (r.suspicious_keywords && r.suspicious_keywords.length) {
+    kwHtml = `<hr class="divider">
+      <div>
+        <div class="section-label">Suspicious language detected</div>
+        <div class="tag-list">${r.suspicious_keywords.map(k => `<span class="tag">${k}</span>`).join('')}</div>
+      </div>`;
+  }
+
+  let flagsHtml = '';
+  if (r.red_flags && r.red_flags.length) {
+    flagsHtml = `<hr class="divider">
+      <div>
+        <div class="section-label">Red flags</div>
+        <ul class="signal-list">${r.red_flags.map(f => `<li><span class="dot dot-danger"></span>${f}</li>`).join('')}</ul>
+      </div>`;
+  }
+
+  let posHtml = '';
+  if (r.positive_signals && r.positive_signals.length) {
+    posHtml = `<hr class="divider">
+      <div>
+        <div class="section-label">Credibility signals</div>
+        <ul class="signal-list">${r.positive_signals.map(p => `<li><span class="dot dot-success"></span>${p}</li>`).join('')}</ul>
+      </div>`;
+  }
+
+  let claimsHtml = '';
+  if (r.key_claims && r.key_claims.length) {
+    claimsHtml = `<hr class="divider">
+      <div>
+        <div class="section-label">Claims to verify</div>
+        <ul class="signal-list">${r.key_claims.map(c => `<li><span class="dot dot-neutral"></span>${c}</li>`).join('')}</ul>
+      </div>`;
+  }
+
+  return `
+    <div class="result-card">
+      <div class="result-header">
+        <span class="verdict-badge ${r.verdict}">${verdictLabel}</span>
+        <div class="score-block">
+          <div class="score-num">${score}<span style="font-size:15px;font-weight:400">%</span></div>
+          <div class="score-lbl">${scoreNote}</div>
+        </div>
+      </div>
+      <div class="bar-track">
+        <div class="bar-fill" id="${uid}" style="width:0%;background:${barColor}"></div>
+      </div>
+      <div class="result-body">
+        <div>
+          <div class="section-label">Summary</div>
+          <div class="section-text">${r.summary}</div>
+        </div>
+        ${kwHtml}${flagsHtml}${posHtml}${claimsHtml}
+      </div>
+    </div>
+    <div class="followup-chips">
+      <button class="chip" onclick="ask('Why is this article ${r.verdict}?')">Why ${r.verdict}?</button>
+      <button class="chip" onclick="ask('What claims should I independently verify?')">What to verify?</button>
+      <button class="chip" onclick="ask('Is this article biased?')">Is it biased?</button>
+      <button class="chip" onclick="ask('Give me a one-sentence summary')">One-liner</button>
+    </div>`;
+}
+
+async function ask(question) {
+  document.getElementById('input').value = question;
+  await handleSend();
+}
+
+async function handleSend() {
+  const input  = document.getElementById('input');
+  const btn    = document.getElementById('send-btn');
+  const text   = input.value.trim();
+  if (!text) return;
+
+  btn.disabled = true;
+  input.value  = '';
+
+  const wordCount = text.split(/\s+/).length;
+  const isArticle = wordCount >= 25;
+  const preview   = text.length > 110 ? text.slice(0, 110) + '…' : text;
+  addMsg('user', preview);
+  addTyping();
+
+  try {
+    if (isArticle) {
+      lastArticle = text;
+      const res = await fetch('/api/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text })
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || 'Analysis failed');
+      }
+      const result = await res.json();
+      lastResult   = result;
+      removeTyping();
+      const msgNode = addMsg('bot', buildResultHTML(result));
+      setTimeout(() => {
+        const bar = msgNode.querySelector('[id^="bar"]');
+        if (bar) bar.style.width = result.credibility_score + '%';
+      }, 80);
+
+    } else {
+      if (!lastArticle) {
+        removeTyping();
+        addMsg('bot', 'Please paste a news article first (at least 25 words), then I can answer follow-up questions about it.');
+        btn.disabled = false;
+        return;
+      }
+      const res = await fetch('/api/followup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          article: lastArticle,
+          summary: lastResult?.summary || '',
+          verdict: lastResult?.verdict || '',
+          score:   lastResult?.credibility_score || '',
+          question: text
+        })
+      });
+      if (!res.ok) throw new Error('Follow-up failed');
+      const data = await res.json();
+      removeTyping();
+      addMsg('bot', data.answer);
+    }
+  } catch (e) {
+    removeTyping();
+    addMsg('bot', `Something went wrong: ${e.message}. Check your API key in the terminal and try again.`);
+  }
+
+  btn.disabled = false;
+}
+
+document.getElementById('input').addEventListener('keydown', e => {
+  if (e.key === 'Enter' && e.ctrlKey) handleSend();
+});
+</script>
+</body>
+</html>
