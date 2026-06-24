@@ -1,4 +1,4 @@
-# News Fact-Checker Chatbot
+# AI-News-Fact-Checking-and-Summarization-Chatbot
 
 ## Setup & Run in VS Code
 
